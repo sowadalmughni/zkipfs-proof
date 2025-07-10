@@ -1,0 +1,318 @@
+name: 'zkIPFS-Proof'
+description: 'Generate and verify zero-knowledge proofs for file content without revealing sensitive data'
+author: 'Sowad Al-Mughni'
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  mode:
+    description: 'Action mode: generate, verify, or validate'
+    required: true
+    default: 'generate'
+  
+  files:
+    description: 'Files to process (glob patterns supported)'
+    required: false
+    default: '**/*'
+  
+  content:
+    description: 'Content to prove (for generate mode)'
+    required: false
+  
+  proof:
+    description: 'Proof file path (for verify mode)'
+    required: false
+  
+  output-dir:
+    description: 'Output directory for generated proofs'
+    required: false
+    default: './proofs'
+  
+  security-level:
+    description: 'Security level (64, 128, 256)'
+    required: false
+    default: '128'
+  
+  fail-on-error:
+    description: 'Fail the action if proof generation/verification fails'
+    required: false
+    default: 'true'
+  
+  upload-to-ipfs:
+    description: 'Upload files to IPFS before generating proofs'
+    required: false
+    default: 'false'
+  
+  ipfs-api-url:
+    description: 'IPFS API URL'
+    required: false
+    default: 'http://127.0.0.1:5001'
+  
+  comment-pr:
+    description: 'Comment proof results on pull requests'
+    required: false
+    default: 'true'
+  
+  artifact-name:
+    description: 'Name for the proof artifacts'
+    required: false
+    default: 'zkipfs-proofs'
+
+outputs:
+  success:
+    description: 'Whether the action completed successfully'
+  
+  proof-count:
+    description: 'Number of proofs generated or verified'
+  
+  proof-files:
+    description: 'JSON array of generated proof file paths'
+  
+  ipfs-cids:
+    description: 'JSON array of IPFS CIDs (if uploaded)'
+  
+  summary:
+    description: 'Summary of the action results'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        components: rustfmt, clippy
+    
+    - name: Cache Rust dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+    
+    - name: Install zkIPFS-Proof CLI
+      shell: bash
+      run: |
+        if ! command -v zkipfs-proof &> /dev/null; then
+          echo "Installing zkIPFS-Proof CLI..."
+          cargo install --git https://github.com/sowadmim/zkipfs-proof.git --bin zkipfs-proof
+        else
+          echo "zkIPFS-Proof CLI already installed"
+        fi
+    
+    - name: Setup IPFS (if needed)
+      if: inputs.upload-to-ipfs == 'true'
+      shell: bash
+      run: |
+        if ! command -v ipfs &> /dev/null; then
+          echo "Installing IPFS..."
+          wget https://dist.ipfs.tech/kubo/v0.24.0/kubo_v0.24.0_linux-amd64.tar.gz
+          tar -xzf kubo_v0.24.0_linux-amd64.tar.gz
+          sudo mv kubo/ipfs /usr/local/bin/
+          ipfs init
+          ipfs daemon &
+          sleep 5
+        fi
+    
+    - name: Create output directory
+      shell: bash
+      run: mkdir -p "${{ inputs.output-dir }}"
+    
+    - name: Process files
+      shell: bash
+      run: |
+        set -e
+        
+        # Initialize counters and arrays
+        PROOF_COUNT=0
+        PROOF_FILES=()
+        IPFS_CIDS=()
+        SUCCESS=true
+        SUMMARY=""
+        
+        # Function to generate proof
+        generate_proof() {
+          local file="$1"
+          local output_file="$2"
+          
+          echo "Generating proof for: $file"
+          
+          # Build command
+          local cmd="zkipfs-proof generate --file '$file' --output '$output_file' --security-level ${{ inputs.security-level }}"
+          
+          if [ -n "${{ inputs.content }}" ]; then
+            cmd="$cmd --content '${{ inputs.content }}'"
+          fi
+          
+          # Upload to IPFS first if requested
+          if [ "${{ inputs.upload-to-ipfs }}" = "true" ]; then
+            echo "Uploading to IPFS: $file"
+            local cid=$(zkipfs-proof ipfs upload --file "$file" --api-url "${{ inputs.ipfs-api-url }}" --output json | jq -r '.cid')
+            IPFS_CIDS+=("$cid")
+            echo "File uploaded to IPFS with CID: $cid"
+          fi
+          
+          # Generate proof
+          if eval "$cmd"; then
+            PROOF_FILES+=("$output_file")
+            PROOF_COUNT=$((PROOF_COUNT + 1))
+            echo "✅ Proof generated successfully: $output_file"
+          else
+            echo "❌ Failed to generate proof for: $file"
+            if [ "${{ inputs.fail-on-error }}" = "true" ]; then
+              SUCCESS=false
+              return 1
+            fi
+          fi
+        }
+        
+        # Function to verify proof
+        verify_proof() {
+          local proof_file="$1"
+          
+          echo "Verifying proof: $proof_file"
+          
+          if zkipfs-proof verify --proof "$proof_file"; then
+            PROOF_COUNT=$((PROOF_COUNT + 1))
+            echo "✅ Proof verified successfully: $proof_file"
+          else
+            echo "❌ Failed to verify proof: $proof_file"
+            if [ "${{ inputs.fail-on-error }}" = "true" ]; then
+              SUCCESS=false
+              return 1
+            fi
+          fi
+        }
+        
+        # Main processing logic
+        case "${{ inputs.mode }}" in
+          "generate")
+            echo "Mode: Generate proofs"
+            
+            # Find files matching the pattern
+            while IFS= read -r -d '' file; do
+              if [ -f "$file" ]; then
+                # Generate output filename
+                filename=$(basename "$file")
+                output_file="${{ inputs.output-dir }}/${filename}.proof.json"
+                
+                generate_proof "$file" "$output_file"
+              fi
+            done < <(find . -path "${{ inputs.files }}" -type f -print0)
+            ;;
+            
+          "verify")
+            echo "Mode: Verify proofs"
+            
+            if [ -n "${{ inputs.proof }}" ]; then
+              # Verify specific proof file
+              verify_proof "${{ inputs.proof }}"
+            else
+              # Verify all proof files in output directory
+              while IFS= read -r -d '' proof_file; do
+                verify_proof "$proof_file"
+              done < <(find "${{ inputs.output-dir }}" -name "*.proof.json" -type f -print0)
+            fi
+            ;;
+            
+          "validate")
+            echo "Mode: Validate file integrity"
+            
+            # Check if files have been modified since last proof generation
+            while IFS= read -r -d '' file; do
+              if [ -f "$file" ]; then
+                filename=$(basename "$file")
+                proof_file="${{ inputs.output-dir }}/${filename}.proof.json"
+                
+                if [ -f "$proof_file" ]; then
+                  echo "Validating: $file against $proof_file"
+                  if zkipfs-proof verify --proof "$proof_file" --file "$file"; then
+                    echo "✅ File validation successful: $file"
+                    PROOF_COUNT=$((PROOF_COUNT + 1))
+                  else
+                    echo "❌ File validation failed: $file"
+                    if [ "${{ inputs.fail-on-error }}" = "true" ]; then
+                      SUCCESS=false
+                    fi
+                  fi
+                else
+                  echo "⚠️  No proof file found for: $file"
+                fi
+              fi
+            done < <(find . -path "${{ inputs.files }}" -type f -print0)
+            ;;
+            
+          *)
+            echo "❌ Invalid mode: ${{ inputs.mode }}"
+            SUCCESS=false
+            ;;
+        esac
+        
+        # Generate summary
+        if [ "$SUCCESS" = "true" ]; then
+          SUMMARY="✅ zkIPFS-Proof action completed successfully. Processed $PROOF_COUNT items."
+        else
+          SUMMARY="❌ zkIPFS-Proof action completed with errors. Processed $PROOF_COUNT items."
+        fi
+        
+        # Convert arrays to JSON
+        PROOF_FILES_JSON=$(printf '%s\n' "${PROOF_FILES[@]}" | jq -R . | jq -s .)
+        IPFS_CIDS_JSON=$(printf '%s\n' "${IPFS_CIDS[@]}" | jq -R . | jq -s .)
+        
+        # Set outputs
+        echo "success=$SUCCESS" >> $GITHUB_OUTPUT
+        echo "proof-count=$PROOF_COUNT" >> $GITHUB_OUTPUT
+        echo "proof-files=$PROOF_FILES_JSON" >> $GITHUB_OUTPUT
+        echo "ipfs-cids=$IPFS_CIDS_JSON" >> $GITHUB_OUTPUT
+        echo "summary=$SUMMARY" >> $GITHUB_OUTPUT
+        
+        echo "$SUMMARY"
+        
+        # Exit with error if not successful and fail-on-error is true
+        if [ "$SUCCESS" = "false" ] && [ "${{ inputs.fail-on-error }}" = "true" ]; then
+          exit 1
+        fi
+    
+    - name: Upload proof artifacts
+      if: inputs.mode == 'generate'
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.output-dir }}/**/*.proof.json
+        retention-days: 30
+    
+    - name: Comment on PR
+      if: inputs.comment-pr == 'true' && github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const summary = `${{ steps.process-files.outputs.summary }}`;
+          const proofCount = `${{ steps.process-files.outputs.proof-count }}`;
+          const mode = `${{ inputs.mode }}`;
+          
+          const body = `## 🔐 zkIPFS-Proof Results
+          
+          **Mode:** ${mode}  
+          **Items Processed:** ${proofCount}  
+          **Status:** ${summary}
+          
+          ${mode === 'generate' ? '📁 Proof files have been uploaded as artifacts.' : ''}
+          ${mode === 'verify' ? '✅ All proofs verified successfully.' : ''}
+          ${mode === 'validate' ? '🔍 File integrity validation completed.' : ''}
+          
+          ---
+          *Generated by [zkIPFS-Proof](https://github.com/sowadmim/zkipfs-proof) GitHub Action*`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: body
+          });
+

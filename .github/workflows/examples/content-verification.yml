@@ -1,0 +1,53 @@
+name: Content Verification
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  verify-content:
+    runs-on: ubuntu-latest
+    name: Verify File Content Integrity
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Generate proofs for documentation
+        uses: ./
+        with:
+          mode: 'generate'
+          files: 'docs/**/*.md'
+          output-dir: './proofs'
+          security-level: '128'
+          comment-pr: true
+          artifact-name: 'documentation-proofs'
+      
+      - name: Generate proofs for source code
+        uses: ./
+        with:
+          mode: 'generate'
+          files: 'src/**/*.rs'
+          output-dir: './proofs'
+          security-level: '128'
+          fail-on-error: false
+      
+      - name: Verify existing proofs
+        uses: ./
+        with:
+          mode: 'verify'
+          output-dir: './proofs'
+          fail-on-error: true
+      
+      - name: Upload to IPFS and generate proofs
+        if: github.ref == 'refs/heads/main'
+        uses: ./
+        with:
+          mode: 'generate'
+          files: 'README.md'
+          upload-to-ipfs: true
+          ipfs-api-url: 'http://127.0.0.1:5001'
+          output-dir: './ipfs-proofs'
+

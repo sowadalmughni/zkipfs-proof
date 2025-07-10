@@ -1,0 +1,112 @@
+name: Security Audit
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      audit_scope:
+        description: 'Audit scope'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - contracts
+          - documentation
+          - source
+
+jobs:
+  security-audit:
+    runs-on: ubuntu-latest
+    name: Security Audit with zkIPFS-Proof
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for comprehensive audit
+      
+      - name: Audit smart contracts
+        if: github.event.inputs.audit_scope == 'full' || github.event.inputs.audit_scope == 'contracts'
+        uses: ./
+        with:
+          mode: 'generate'
+          files: 'contracts/src/**/*.sol'
+          content: 'security audit checkpoint'
+          output-dir: './audit-proofs/contracts'
+          security-level: '256'
+          artifact-name: 'contract-audit-proofs'
+      
+      - name: Audit documentation
+        if: github.event.inputs.audit_scope == 'full' || github.event.inputs.audit_scope == 'documentation'
+        uses: ./
+        with:
+          mode: 'generate'
+          files: 'docs/**/*.md'
+          output-dir: './audit-proofs/docs'
+          security-level: '128'
+          upload-to-ipfs: true
+      
+      - name: Audit source code
+        if: github.event.inputs.audit_scope == 'full' || github.event.inputs.audit_scope == 'source'
+        uses: ./
+        with:
+          mode: 'generate'
+          files: |
+            core/src/**/*.rs
+            cli/src/**/*.rs
+          output-dir: './audit-proofs/source'
+          security-level: '256'
+      
+      - name: Validate previous audit proofs
+        uses: ./
+        with:
+          mode: 'validate'
+          files: '**/*'
+          output-dir: './audit-proofs'
+          fail-on-error: false
+      
+      - name: Generate audit report
+        run: |
+          echo "# Security Audit Report" > audit-report.md
+          echo "**Date:** $(date)" >> audit-report.md
+          echo "**Scope:** ${{ github.event.inputs.audit_scope || 'full' }}" >> audit-report.md
+          echo "" >> audit-report.md
+          echo "## Proof Generation Results" >> audit-report.md
+          echo "- **Contracts:** $(find ./audit-proofs/contracts -name '*.proof.json' 2>/dev/null | wc -l) proofs generated" >> audit-report.md
+          echo "- **Documentation:** $(find ./audit-proofs/docs -name '*.proof.json' 2>/dev/null | wc -l) proofs generated" >> audit-report.md
+          echo "- **Source Code:** $(find ./audit-proofs/source -name '*.proof.json' 2>/dev/null | wc -l) proofs generated" >> audit-report.md
+          echo "" >> audit-report.md
+          echo "All proofs can be independently verified using zkIPFS-Proof CLI." >> audit-report.md
+      
+      - name: Upload audit artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-audit-${{ github.run_number }}
+          path: |
+            ./audit-proofs/**/*.proof.json
+            audit-report.md
+          retention-days: 90
+      
+      - name: Create issue on validation failure
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Security Audit Validation Failed',
+              body: `Security audit validation failed on ${new Date().toISOString()}.
+              
+              **Run:** ${{ github.run_number }}
+              **Scope:** ${{ github.event.inputs.audit_scope || 'full' }}
+              
+              Please review the audit results and investigate any integrity issues.
+              
+              [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`,
+              labels: ['security', 'audit', 'high-priority']
+            })
+

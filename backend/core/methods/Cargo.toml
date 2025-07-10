@@ -1,0 +1,11 @@
+[package]
+name = "zkipfs-proof-methods"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+risc0-build = "1.2"
+
+[dependencies]
+risc0-zkvm = "1.2"
+
