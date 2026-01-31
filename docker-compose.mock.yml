@@ -1,0 +1,73 @@
+# ==============================================================================
+# zkIPFS Proof - Quick Start with Mock Backend
+# ==============================================================================
+#
+# This configuration provides a FAST startup for development/demo purposes.
+# The mock backend responds to all API endpoints with sample data.
+#
+# Usage:
+#   docker-compose -f docker-compose.mock.yml up
+#
+# ==============================================================================
+
+services:
+  # --------------------------------------------------------------------------
+  # Mock Backend (Node.js - fast startup)
+  # --------------------------------------------------------------------------
+  backend:
+    image: node:20-slim
+    working_dir: /app
+    command: node server.js
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./scripts/mock-backend:/app
+    environment:
+      - NODE_ENV=development
+    networks:
+      - mock-net
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # Frontend Web App
+  # --------------------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/web/Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - mock-net
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # PostgreSQL Database
+  # --------------------------------------------------------------------------
+  db:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=zkipfs
+    volumes:
+      - mock-db-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - mock-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d zkipfs"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+networks:
+  mock-net:
+    driver: bridge
+
+volumes:
+  mock-db-data:
