@@ -12,6 +12,11 @@ yarn-error.log*
 dist/
 build/
 
+# pnpm store (content-addressable cache)
+.pnpm-store/
+**/pnpm-store/
+**/.pnpm-store/
+
 # Environment files
 .env
 .env.local
