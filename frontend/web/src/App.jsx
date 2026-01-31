@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast'
 
 import GeneratePage from './pages/GeneratePage'
 import BatchGeneratePage from './pages/BatchGeneratePage'
+import DashboardLayout from './pages/dashboard/DashboardLayout'
 
 // Components
 import Header from './components/Header'
@@ -61,6 +62,12 @@ function App() {
                 <ProofVerification />
               </div>
             </div>
+          </div>
+        )
+      case 'dashboard':
+        return (
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+             <DashboardLayout />
           </div>
         )
       default:

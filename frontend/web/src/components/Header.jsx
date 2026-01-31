@@ -8,6 +8,7 @@ export default function Header({ currentPage, setCurrentPage }) {
     { name: 'Home', id: 'home' },
     { name: 'Generate', id: 'generate' },
     { name: 'Verify', id: 'verify' },
+    { name: 'Dashboard', id: 'dashboard' },
   ]
 
   return (

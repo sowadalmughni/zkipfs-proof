@@ -1,0 +1,60 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/server/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgres://user:password@db:5432/zkipfs
+      - RUST_LOG=info
+    depends_on:
+      - db
+    networks:
+      - enterprise-net
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/web/Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - enterprise-net
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=zkipfs
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - enterprise-net
+
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - enterprise-net
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - enterprise-net
+
+networks:
+  enterprise-net:
+
+volumes:
+  db-data:

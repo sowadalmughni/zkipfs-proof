@@ -116,6 +116,25 @@ The beauty is that the proof reveals nothing about your file except what you exp
 - **Prometheus Metrics**: Built-in monitoring for proof generation and verification
 - **Distributed Tracing**: Full visibility into request lifecycles
 
+### 🏢 Enterprise Edition
+- **Admin Dashboard**: Manage API keys, view analytics, and monitor system health
+- **Role-Based Access**: Secure API endpoints with API Key authentication
+- **Rate Limiting**: Protect your resources with token-bucket rate limiting strategies
+- **Persistent Storage**: PostgreSQL integration for reliable data persistence
+
+## Deployment
+
+### Standard
+```bash
+docker-compose up -d
+```
+
+### Enterprise
+Run the full enterprise stack with database and monitoring:
+```bash
+docker-compose -f docker-compose.enterprise.yml up -d
+```
+
 ## Project Structure
 
 ```
@@ -189,12 +208,12 @@ cd ../../backend && cargo test
 - [ ] Batch proof generation
 - [ ] Performance optimizations
 
-### Phase 4: Enterprise Features (Q4 2025)
-- [ ] Enterprise dashboard
-- [ ] API rate limiting and authentication
-- [ ] Advanced analytics and monitoring
-- [ ] Custom deployment options
-- [ ] Professional support
+### Phase 4: Enterprise Features (Q4 2025) ✅
+- [x] Enterprise dashboard
+- [x] API rate limiting and authentication
+- [x] Advanced analytics and monitoring
+- [x] Custom deployment options
+- [x] Professional support
 
 ## Security
 

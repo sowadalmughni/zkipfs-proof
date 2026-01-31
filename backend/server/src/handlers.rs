@@ -5,7 +5,7 @@ use axum::{
 };
 use std::path::PathBuf;
 use uuid::Uuid;
-use crate::{AppState, Job, JobStatus};
+use crate::state::{AppState, Job, JobStatus};
 use zkipfs_proof_core::{ProofGenerator, ProofConfig, ContentSelection};
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
@@ -141,4 +141,42 @@ async fn process_proof_request(
     let proof = generator.generate_proof(&file_path, selection).await?;
 
     Ok(proof)
+}
+
+// Enterprise Handlers
+
+pub async fn create_api_key(
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    // In real world, authenticated user creates a key. Here we simulate "admin" creating it or open creation for demo.
+    // For demo/POC: Allow open creation or require a "master" key?
+    // Let's assume open for now or require a secret hardcoded in env?
+    // For simplicity: Open endpoint for generating keys.
+    match state.db.create_api_key("demo_user").await {
+        Ok((key, raw)) => Json(serde_json::json!({
+            "key": raw,
+            "id": key.id,
+            "created_at": key.created_at
+        })).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response()
+    }
+}
+
+pub async fn list_api_keys(
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    match state.db.list_keys().await {
+        Ok(keys) => Json(keys).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response()
+    }
+}
+
+pub async fn revoke_api_key(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    match state.db.revoke_key(&id).await {
+        Ok(_) => StatusCode::OK.into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response()
+    }
 }
