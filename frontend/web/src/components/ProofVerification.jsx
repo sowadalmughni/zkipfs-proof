@@ -261,9 +261,16 @@ const ProofVerification = () => {
                   {verificationResult.metadata.contentSelection && (
                     <div>
                       <span className="font-medium text-gray-700 dark:text-gray-300">Content Selection:</span>
-                      <span className="ml-2 text-gray-600 dark:text-gray-400 capitalize">
-                        {verificationResult.metadata.contentSelection}
-                      </span>
+                      <div className="ml-2 flex flex-col">
+                        <span className="text-gray-600 dark:text-gray-400 capitalize">
+                          {verificationResult.metadata.contentSelection}
+                        </span>
+                        {verificationResult.metadata.selectionValue && (
+                          <span className="text-xs font-mono text-gray-500 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 p-1 rounded mt-1">
+                            {verificationResult.metadata.selectionValue}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
