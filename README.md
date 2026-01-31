@@ -19,7 +19,7 @@ zkIPFS-Proof solves this using zero-knowledge proofs powered by Risc0's ZK-VM. Y
 cargo install zkipfs-proof
 
 # Or download pre-built binaries from releases
-curl -L https://github.com/sowadmim/zkipfs-proof/releases/latest/download/zkipfs-proof-linux.tar.gz | tar xz
+curl -L https://github.com/sowadalmughni/zkipfs-proof/releases/latest/download/zkipfs-proof-linux.tar.gz | tar xz
 ```
 
 ### Generate Your First Proof
@@ -108,21 +108,31 @@ The beauty is that the proof reveals nothing about your file except what you exp
 - Support for Ethereum, Polygon, Arbitrum, and more
 - Gas-optimized batch verification
 
+### 🔍 Advanced Content Selection
+- **Regex Support**: Prove patterns (e.g., email, dates) exist without revealing values
+- **Zero-Leakage**: Verify format compliance while maintaining total privacy
+
+### 📊 Enterprise Observability
+- **Prometheus Metrics**: Built-in monitoring for proof generation and verification
+- **Distributed Tracing**: Full visibility into request lifecycles
+
 ## Project Structure
 
 ```
 zkipfs-proof/
-├── core/                 # Core Rust library with ZK circuits
-├── cli/                  # Command-line interface
-├── contracts/            # Solidity smart contracts
-├── web/                  # React web application
+├── backend/
+│   ├── core/             # Core Rust library with ZK circuits
+│   ├── cli/              # Command-line interface
+│   └── contracts/        # Solidity smart contracts
+├── frontend/
+│   └── web/              # React web application
 ├── docs/                 # Documentation and tutorials
 └── examples/             # Real-world usage examples
 ```
 
 ## Contributing
 
-This project exists because I believe privacy and verifiability shouldn't be mutually exclusive. If you share that vision, I'd love your help making it better.
+This is a open source product. I want others to join and contribute.
 
 ### Getting Started
 
@@ -136,17 +146,17 @@ This project exists because I believe privacy and verifiability shouldn't be mut
 
 ```bash
 # Clone the repository
-git clone https://github.com/sowadmim/zkipfs-proof.git
+git clone https://github.com/sowadalmughni/zkipfs-proof.git
 cd zkipfs-proof
 
 # Install Rust dependencies
-cargo build
+cd backend && cargo build
 
 # Install Node.js dependencies for the web app
-cd web && npm install
+cd ../frontend/web && npm install
 
 # Run tests
-cargo test
+cd ../../backend && cargo test
 ```
 
 ### Areas Where We Need Help
@@ -174,7 +184,8 @@ cargo test
 ### Phase 3: Advanced Features (Q3 2025)
 - [ ] Mobile applications
 - [ ] Browser extensions
-- [ ] Advanced content selection (regex, XPath)
+- [x] Advanced content selection (Regex)
+- [ ] Advanced content selection (XPath)
 - [ ] Batch proof generation
 - [ ] Performance optimizations
 
@@ -195,7 +206,7 @@ Security is paramount when dealing with cryptographic proofs. Here's how we ensu
 - **Bug bounty program** for responsible disclosure
 - **Comprehensive testing** including fuzzing and property-based tests
 
-Found a security issue? Please email sowadalmughni@gmail.com instead of opening a public issue.
+Found a security issue? Please email sowad@kitalonlabs.com instead of opening a public issue.
 
 ## License
 
@@ -212,12 +223,15 @@ This project wouldn't exist without the incredible work of:
 
 ## Support
 
+- **Primary Contact**: Md. Sowad Al-Mughni (sowad@kitalonlabs.com)
+- **Company**: [Kitalon Labs](https://kitalonlabs.com/)
 - **Documentation**: Check out our [comprehensive guides](docs/)
 - **GitHub Discussions**: Join discussions and ask questions
 - **Issues**: Report bugs on [GitHub Issues](https://github.com/sowadalmughni/zkipfs-proof/issues)
-- **Email**: Reach out at sowadalmughni@gmail.com
 
 ---
 
-*Built with ❤️ by [Sowad Al-Mughni](https://github.com/sowadalmughni) and the open-source community.*
+Maintained by Kitalon Labs — Md. Sowad Al-Mughni (sowad@kitalonlabs.com)
+
+Made with ❤️ by Md. Sowad Al-Mughni
 
