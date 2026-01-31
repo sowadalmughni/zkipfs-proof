@@ -1,23 +1,32 @@
-FROM rust:1.75 as builder
+FROM rust:latest as builder
 WORKDIR /app
+RUN apt-get update && apt-get install -y libssl-dev pkg-config
 
-# Copy manifests first for caching
-COPY Cargo.toml Cargo.lock ./
-COPY backend/core/Cargo.toml backend/core/Cargo.toml
-COPY backend/cli/Cargo.toml backend/cli/Cargo.toml
-COPY backend/server/Cargo.toml backend/server/Cargo.toml
-COPY backend/core/methods/Cargo.toml backend/core/methods/Cargo.toml
+# Copy manifests first for caching (commented out for stability)
+# COPY Cargo.toml ./
+# COPY backend/core/Cargo.toml backend/core/Cargo.toml
+# COPY backend/cli/Cargo.toml backend/cli/Cargo.toml
+# COPY backend/server/Cargo.toml backend/server/Cargo.toml
+# COPY backend/core/methods/Cargo.toml backend/core/methods/Cargo.toml
+
+# Copy methods directory fully as Risc0 build scripts might need it
+# COPY backend/core/methods backend/core/methods
 
 # Create dummy src files to build deps
-RUN mkdir -p backend/core/src && echo "fn main() {}" > backend/core/src/lib.rs
-RUN mkdir -p backend/cli/src && echo "fn main() {}" > backend/cli/src/main.rs
-RUN mkdir -p backend/server/src && echo "fn main() {}" > backend/server/src/main.rs
-RUN mkdir -p backend/core/methods/guest/src && echo "fn main() {}" > backend/core/methods/guest/src/main.rs
+# RUN mkdir -p backend/core/src && echo "fn main() {}" > backend/core/src/lib.rs
+# RUN mkdir -p backend/cli/src && echo "fn main() {}" > backend/cli/src/main.rs
+# RUN mkdir -p backend/server/src && echo "fn main() {}" > backend/server/src/main.rs
 
 # Build dependencies
-# Note: This might fail if workspace structure is complex, but commonly works. 
-# Alternatively, just copy everything and build.
+# RUN cargo build --release --bin zkipfs-proof-server
+
+# Remove dummy files
+# RUN rm -rf backend/core/src backend/cli/src backend/server/src
+
+# Copy source code
 COPY . .
+
+# Build the server
 RUN cargo build --release --bin zkipfs-proof-server
 
 # Runtime Stage

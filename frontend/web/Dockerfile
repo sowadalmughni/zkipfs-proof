@@ -1,10 +1,11 @@
 # Build Stage
-FROM node:20-alpine as build
+FROM node:20-slim as build
 WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
+COPY frontend/web/package.json ./
+COPY frontend/web/package.json ./
+RUN npm install -g pnpm && pnpm install
+COPY frontend/web/ .
+RUN pnpm run build
 
 # Serve Stage
 FROM nginx:alpine
