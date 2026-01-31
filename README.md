@@ -180,11 +180,12 @@ cd ../../backend && cargo test
 
 ### Areas Where We Need Help
 
-- **Performance optimization** for large files
-- **Additional blockchain integrations** (Solana, Cosmos, etc.)
-- **Mobile applications** for iOS and Android
-- **Documentation improvements** and tutorials
-- **Security audits** and formal verification
+- **Additional blockchain integrations** (Solana, Cosmos, Near, etc.)
+- **Mobile app enhancements** for iOS and Android
+- **Internationalization** (i18n) and localization
+- **Plugin ecosystem** development
+- **Community tutorials** and video content
+- **Accessibility improvements** for the web interface
 
 ## Roadmap
 
@@ -200,13 +201,11 @@ cd ../../backend && cargo test
 - [x] Multi-chain support
 - [x] Comprehensive documentation
 
-### Phase 3: Advanced Features (Q3 2025)
-- [ ] Mobile applications
-- [ ] Browser extensions
+### Phase 3: Advanced Features (Q4 2025) ✅
 - [x] Advanced content selection (Regex)
-- [ ] Advanced content selection (XPath)
-- [ ] Batch proof generation
-- [ ] Performance optimizations
+- [x] Advanced content selection (XPath)
+- [x] Batch proof generation
+- [x] Performance optimizations
 
 ### Phase 4: Enterprise Features (Q4 2025) ✅
 - [x] Enterprise dashboard
@@ -214,6 +213,21 @@ cd ../../backend && cargo test
 - [x] Advanced analytics and monitoring
 - [x] Custom deployment options
 - [x] Professional support
+
+### Phase 5: Ecosystem Expansion (Q1-Q2 2026)
+- [ ] Mobile applications for iOS and Android
+- [ ] Browser extensions (Chrome, Firefox, Safari)
+- [ ] Solana and Cosmos blockchain support
+- [ ] Plugin architecture for custom proof types
+- [ ] SDK for third-party integrations
+- [ ] Proof aggregation and rollups
+
+### Phase 6: Community & Scale (Q3-Q4 2026)
+- [ ] Decentralized proof verification network
+- [ ] Community marketplace for proof templates
+- [ ] Multi-language support (i18n)
+- [ ] Hardware wallet integration
+- [ ] Enterprise SSO and LDAP integration
 
 ## Security
 

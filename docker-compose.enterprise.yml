@@ -1,29 +1,63 @@
+# ==============================================================================
+# zkIPFS Proof - Enterprise Docker Compose Configuration
+# ==============================================================================
+# 
+# Usage:
+#   docker-compose -f docker-compose.enterprise.yml up --build
+#
+# Services:
+#   - frontend:   React app with nginx (http://localhost:8080)
+#   - backend:    Rust API server (http://localhost:3000)
+#   - db:         PostgreSQL database
+#   - prometheus: Metrics collection (http://localhost:9090)
+#   - grafana:    Monitoring dashboard (http://localhost:3001)
+#
+# ==============================================================================
+
 services:
+  # --------------------------------------------------------------------------
+  # Backend API Server (Rust)
+  # --------------------------------------------------------------------------
   backend:
     build:
       context: .
       dockerfile: backend/server/Dockerfile
+      args:
+        - RISC0_DEV_MODE=1  # Set to 0 for production with real proofs
     ports:
       - "3000:3000"
     environment:
       - DATABASE_URL=postgres://user:password@db:5432/zkipfs
       - RUST_LOG=info
+      - RISC0_DEV_MODE=1
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - enterprise-net
+    restart: unless-stopped
 
+  # --------------------------------------------------------------------------
+  # Frontend Web App (React + Vite + nginx)
+  # --------------------------------------------------------------------------
   frontend:
     build:
       context: .
       dockerfile: frontend/web/Dockerfile
+      args:
+        - VITE_API_URL=/api
     ports:
       - "8080:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - enterprise-net
+    restart: unless-stopped
 
+  # --------------------------------------------------------------------------
+  # PostgreSQL Database
+  # --------------------------------------------------------------------------
   db:
     image: postgres:15-alpine
     environment:
@@ -32,29 +66,58 @@ services:
       - POSTGRES_DB=zkipfs
     volumes:
       - db-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - enterprise-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d zkipfs"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
+  # --------------------------------------------------------------------------
+  # Prometheus Metrics
+  # --------------------------------------------------------------------------
   prometheus:
-    image: prom/prometheus
+    image: prom/prometheus:latest
     ports:
       - "9090:9090"
     volumes:
-      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
     networks:
       - enterprise-net
+    restart: unless-stopped
 
+  # --------------------------------------------------------------------------
+  # Grafana Dashboard
+  # --------------------------------------------------------------------------
   grafana:
-    image: grafana/grafana
+    image: grafana/grafana:latest
     ports:
       - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=zkipfs-admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
     depends_on:
       - prometheus
     networks:
       - enterprise-net
+    restart: unless-stopped
 
 networks:
   enterprise-net:
+    driver: bridge
 
 volumes:
   db-data:
+  prometheus-data:
+  grafana-data:

@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import toast from 'react-hot-toast'
+import { checkHealth, submitProofJob, getJobStatus, API_BASE_URL } from '@/lib/api'
 
 export default function BatchProofGeneration() {
   const [files, setFiles] = useState([])
@@ -67,18 +68,12 @@ export default function BatchProofGeneration() {
 
         // Check availability of backend
         try {
-            await fetch('http://localhost:3000/health');
+            await checkHealth();
         } catch {
-            throw new Error("Backend server is not running on http://localhost:3000");
+            throw new Error(`Backend server is not responding at ${API_BASE_URL}`);
         }
 
-        const submitRes = await fetch('http://localhost:3000/generate', {
-            method: 'POST',
-            body: formData,
-        });
-        
-        if (!submitRes.ok) throw new Error('Failed to submit job');
-        const { job_id } = await submitRes.json();
+        const { job_id } = await submitProofJob(formData);
 
         // 2. Poll Status
         let jobStatus = 'Pending';
@@ -87,10 +82,7 @@ export default function BatchProofGeneration() {
         while (jobStatus === 'Pending' || jobStatus === 'Processing') {
             await new Promise(resolve => setTimeout(resolve, 1000)); // Poll every 1s
             
-            const statusRes = await fetch(`http://localhost:3000/status/${job_id}`);
-            if (!statusRes.ok) throw new Error('Failed to check status');
-            
-            const statusData = await statusRes.json();
+            const statusData = await getJobStatus(job_id);
             jobStatus = statusData.status; // "Pending", "Processing", "Completed", "Failed"
 
             // Simulate progress update if backend doesn't provide fine-grained progress

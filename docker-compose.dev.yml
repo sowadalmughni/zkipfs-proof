@@ -1,0 +1,72 @@
+# ==============================================================================
+# zkIPFS Proof - Development Docker Compose Configuration
+# ==============================================================================
+#
+# Usage:
+#   docker-compose -f docker-compose.dev.yml up
+#
+# This configuration is optimized for local development:
+#   - Hot reload for frontend
+#   - Volume mounts for live code changes
+#   - Dev mode for faster proof generation
+#   - Exposed database port for debugging
+#
+# ==============================================================================
+
+services:
+  # --------------------------------------------------------------------------
+  # Frontend Development Server (Vite with Hot Reload)
+  # --------------------------------------------------------------------------
+  frontend:
+    image: node:20-slim
+    working_dir: /app
+    command: sh -c "npm install -g pnpm && pnpm install && pnpm run dev --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/web:/app
+      - frontend-node-modules:/app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:3000
+    networks:
+      - dev-net
+
+  # --------------------------------------------------------------------------
+  # PostgreSQL Database (with exposed port for debugging)
+  # --------------------------------------------------------------------------
+  db:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=zkipfs
+    volumes:
+      - dev-db-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - dev-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d zkipfs"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # --------------------------------------------------------------------------
+  # Redis (for caching during development)
+  # --------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - dev-net
+
+networks:
+  dev-net:
+    driver: bridge
+
+volumes:
+  dev-db-data:
+  frontend-node-modules:
