@@ -1,6 +1,6 @@
 FROM rust:latest as builder
 WORKDIR /app
-RUN apt-get update && apt-get install -y libssl-dev pkg-config
+RUN apt-get update && apt-get install -y libssl-dev pkg-config build-essential clang lld
 
 # Copy manifests first for caching (commented out for stability)
 # COPY Cargo.toml ./
