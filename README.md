@@ -178,14 +178,17 @@ cd ../frontend/web && npm install
 cd ../../backend && cargo test
 ```
 
+
+
 ### Areas Where We Need Help
 
 - **Additional blockchain integrations** (Solana, Cosmos, Near, etc.)
 - **Mobile app enhancements** for iOS and Android
-- **Internationalization** (i18n) and localization
-- **Plugin ecosystem** development
-- **Community tutorials** and video content
-- **Accessibility improvements** for the web interface
+- **Internationalization (i18n) and localization**
+- **Plugin ecosystem development**
+- **Community tutorials and video content**
+- **Accessibility improvements for the web interface**
+
 
 ## Roadmap
 
@@ -214,6 +217,7 @@ cd ../../backend && cargo test
 - [x] Custom deployment options
 - [x] Professional support
 
+
 ### Phase 5: Ecosystem Expansion (Q1-Q2 2026)
 - [ ] Mobile applications for iOS and Android
 - [ ] Browser extensions (Chrome, Firefox, Safari)
@@ -228,6 +232,7 @@ cd ../../backend && cargo test
 - [ ] Multi-language support (i18n)
 - [ ] Hardware wallet integration
 - [ ] Enterprise SSO and LDAP integration
+
 
 ## Security
 
