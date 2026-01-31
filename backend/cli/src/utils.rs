@@ -31,6 +31,10 @@ fn parse_single_content_selection(input: &str) -> Result<ContentSelection> {
         Ok(ContentSelection::Regex {
             pattern: regex_pattern.to_string(),
         })
+    } else if let Some(xpath_selector) = input.strip_prefix("xpath:") {
+        Ok(ContentSelection::XPath {
+            selector: xpath_selector.to_string(),
+        })
     } else if let Some(range_spec) = input.strip_prefix("range:") {
         let parts: Vec<&str> = range_spec.split(':').collect();
         if parts.len() != 2 {

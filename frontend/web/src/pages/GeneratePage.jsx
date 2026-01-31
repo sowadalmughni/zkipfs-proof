@@ -509,6 +509,7 @@ export default function GeneratePage() {
                       <SelectItem value="range">Byte Range (e.g. 100-200)</SelectItem>
                       <SelectItem value="pattern">Pattern Match</SelectItem>
                       <SelectItem value="regex">Regular Expression</SelectItem>
+                      <SelectItem value="xpath">XPath Selector</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -517,7 +518,8 @@ export default function GeneratePage() {
                   <div className="space-y-2">
                     <Label htmlFor="selection-value">
                       {proofSettings.contentSelection === 'range' ? 'Byte Range (start-end)' : 
-                       proofSettings.contentSelection === 'regex' ? 'Regex Pattern' : 'Search Pattern'}
+                       proofSettings.contentSelection === 'regex' ? 'Regex Pattern' : 
+                       proofSettings.contentSelection === 'xpath' ? 'XPath Selector' : 'Search Pattern'}
                     </Label>
                     <div className="relative">
                       <input
@@ -527,6 +529,7 @@ export default function GeneratePage() {
                         placeholder={
                           proofSettings.contentSelection === 'range' ? '1024-2048' :
                           proofSettings.contentSelection === 'regex' ? '^([a-z0-9_\\.-]+)@([\\da-z\\.-]+)\\.([a-z\\.]{2,6})$' :
+                          proofSettings.contentSelection === 'xpath' ? '//div[@id=\'content\']' :
                           'Secret content to find...'
                         }
                         value={proofSettings.selectionValue}
@@ -535,6 +538,11 @@ export default function GeneratePage() {
                       {proofSettings.contentSelection === 'regex' && proofSettings.selectionValue && !isValidRegex(proofSettings.selectionValue) && (
                         <p className="absolute -bottom-5 left-0 text-xs text-red-500">
                           Invalid regular expression
+                        </p>
+                      )}
+                      {proofSettings.contentSelection === 'xpath' && (
+                        <p className="absolute -bottom-5 left-0 text-xs text-gray-500">
+                          Works best with XML/HTML content
                         </p>
                       )}
                     </div>

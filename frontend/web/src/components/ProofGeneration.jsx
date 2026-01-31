@@ -12,6 +12,7 @@ const ProofGeneration = ({ file, onProofGenerated }) => {
     contentSelection: 'pattern',
     pattern: '',
     regex: '',
+    xpath: '',
     byteStart: 0,
     byteEnd: 1000,
     compressionEnabled: true
@@ -66,6 +67,7 @@ const ProofGeneration = ({ file, onProofGenerated }) => {
           contentSelection: settings.contentSelection,
           selectionValue: settings.contentSelection === 'pattern' ? settings.pattern :
                          settings.contentSelection === 'regex' ? settings.regex :
+                         settings.contentSelection === 'xpath' ? settings.xpath :
                          settings.contentSelection === 'byteRange' ? `${settings.byteStart}-${settings.byteEnd}` : 'multiple'
         },
         createdAt: new Date().toISOString()
@@ -139,6 +141,7 @@ const ProofGeneration = ({ file, onProofGenerated }) => {
             >
               <option value="pattern">Pattern Match</option>
               <option value="regex">Regex Match</option>
+              <option value="xpath">XPath Selector</option>
               <option value="byteRange">Byte Range</option>
               <option value="multiple">Multiple Selections</option>
             </select>
@@ -172,6 +175,24 @@ const ProofGeneration = ({ file, onProofGenerated }) => {
               placeholder="Enter regex pattern (e.g., ^\d{3}-\d{2}-\d{4}$)"
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono"
             />
+          </div>
+        )}
+
+        {settings.contentSelection === 'xpath' && (
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              XPath Selector
+            </label>
+            <input
+              type="text"
+              value={settings.xpath}
+              onChange={(e) => setSettings(prev => ({ ...prev, xpath: e.target.value }))}
+              placeholder="Enter XPath (e.g., //div[@id='content'])"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono"
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Works best with XML or well-formed HTML content.
+            </p>
           </div>
         )}
 
@@ -209,7 +230,8 @@ const ProofGeneration = ({ file, onProofGenerated }) => {
           onClick={generateProof}
           disabled={!file || isGenerating || 
             (settings.contentSelection === 'pattern' && !settings.pattern) ||
-            (settings.contentSelection === 'regex' && !settings.regex)}
+            (settings.contentSelection === 'regex' && !settings.regex) ||
+            (settings.contentSelection === 'xpath' && !settings.xpath)}
           className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
           <Play className="mr-2 h-5 w-5" />

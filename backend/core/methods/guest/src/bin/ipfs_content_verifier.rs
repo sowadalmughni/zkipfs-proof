@@ -1,14 +1,9 @@
-//! Guest program for zkIPFS-Proof content verification
-//! 
-//! This program runs inside the Risc0 ZK-VM to verify that specific content
-//! exists within an IPFS file without revealing the complete file contents.
-
-#![no_main]
-
 use risc0_zkvm::guest::env;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use regex::Regex;
+use sxd_document::parser;
+use sxd_xpath::{evaluate_xpath, Value};
 
 risc0_zkvm::guest::entry!(main);
 
@@ -58,6 +53,8 @@ pub enum ContentSelection {
     Pattern { content: Vec<u8> },
     /// Prove content matching a regular expression exists
     Regex { pattern: String },
+    /// Prove content matching an XPath expression exists (for XML/HTML)
+    XPath { selector: String },
     /// Prove multiple content selections
     Multiple(Vec<ContentSelection>),
 }
@@ -94,11 +91,8 @@ fn main() {
     // Read input from the host
     let input: ProofInput = env::read();
     
-    // Process input to extract data
-    let all_data = concatenate_blocks(&input.blocks);
-    
-    // Extract content based on selection
-    let extracted_content = extract_content(&all_data, &input.content_selection);
+    // Extract content based on selection (optimized to avoid full concatenation if possible)
+    let extracted_content = extract_content(&input.blocks, &input.content_selection);
     
     // Calculate content hash
     let content_hash: [u8; 32] = sha256_hash(&extracted_content);
@@ -137,39 +131,90 @@ fn concatenate_blocks(blocks: &[IpfsBlock]) -> Vec<u8> {
     data
 }
 
-fn extract_content(data: &[u8], selection: &ContentSelection) -> Vec<u8> {
+fn extract_content(blocks: &[IpfsBlock], selection: &ContentSelection) -> Vec<u8> {
     match selection {
         ContentSelection::ByteRange { start, end } => {
-            if *start >= data.len() || *end > data.len() || start >= end {
-                panic!("Invalid byte range: {}..{} (len: {})", start, end, data.len());
+            let total_len: usize = blocks.iter().map(|b| b.data.len()).sum();
+            if *start >= total_len || *end > total_len || start >= end {
+                panic!("Invalid byte range: {}..{} (len: {})", start, end, total_len);
             }
-            data[*start..*end].to_vec()
-        }
-        ContentSelection::Pattern { content } => {
-            if let Some(_pos) = find_pattern(data, content) {
-                content.clone()
-            } else {
-                panic!("Pattern not found");
+
+            let mut result = Vec::with_capacity(end - start);
+            let mut current_pos = 0;
+
+            for block in blocks {
+                let block_len = block.data.len();
+                let block_end = current_pos + block_len;
+
+                // Check if this block overlaps with the requested range
+                if block_end > *start && current_pos < *end {
+                     let slice_start = if current_pos < *start { start - current_pos } else { 0 };
+                     let slice_end = if block_end > *end { end - current_pos } else { block_len };
+                     
+                     result.extend_from_slice(&block.data[slice_start..slice_end]);
+                }
+                
+                current_pos += block_len;
+                if current_pos >= *end {
+                    break;
+                }
             }
-        }
-        ContentSelection::Regex { pattern } => {
-             // Convert bytes to string for regex matching (assuming UTF-8)
-             // Note: This panics if file content is not valid UTF-8
-             let data_str = std::str::from_utf8(data).expect("File content is not valid UTF-8");
-             let re = Regex::new(pattern).expect("Invalid regex");
-             
-             if let Some(mat) = re.find(data_str) {
-                 mat.as_str().as_bytes().to_vec()
-             } else {
-                 panic!("Regex pattern not found");
-             }
+            result
         }
         ContentSelection::Multiple(selections) => {
             let mut result = Vec::new();
             for sel in selections {
-                result.extend(extract_content(data, sel));
+                result.extend(extract_content(blocks, sel));
             }
             result
+        }
+        // For other types, we currently need the full data
+        _ => {
+            let data = concatenate_blocks(blocks);
+            match selection {
+                ContentSelection::Pattern { content } => {
+                    if let Some(_pos) = find_pattern(&data, content) {
+                        content.clone()
+                    } else {
+                        panic!("Pattern not found");
+                    }
+                }
+                ContentSelection::Regex { pattern } => {
+                     let data_str = std::str::from_utf8(&data).expect("File content is not valid UTF-8");
+                     let re = Regex::new(pattern).expect("Invalid regex");
+                     
+                     if let Some(mat) = re.find(data_str) {
+                         mat.as_str().as_bytes().to_vec()
+                     } else {
+                         panic!("Regex pattern not found");
+                     }
+                }
+                ContentSelection::XPath { selector } => {
+                    let data_str = std::str::from_utf8(&data).expect("File content is not valid UTF-8");
+                    let package = parser::parse(data_str).expect("Failed to parse XML/HTML content");
+                    let document = package.as_document();
+                    
+                    let value = evaluate_xpath(&document, selector).expect("Invalid XPath expression");
+                    
+                    match value {
+                        Value::String(s) => s.into_bytes(),
+                        Value::nodeset(nodes) => {
+                            if nodes.size() > 0 {
+                                 let mut result = String::new();
+                                 for node in nodes.document_order() {
+                                     result.push_str(&node.string_value());
+                                 }
+                                 result.into_bytes()
+                            } else {
+                                panic!("XPath selector found no matches");
+                            }
+                        },
+                        Value::Number(n) => n.to_string().into_bytes(),
+                        Value::Boolean(b) => b.to_string().into_bytes(),
+                    }
+                }
+                _ => panic!("Unreachable: handled above"),
+            }
         }
     }
 }

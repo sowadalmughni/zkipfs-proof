@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Toaster } from 'react-hot-toast'
 
 import GeneratePage from './pages/GeneratePage'
+import BatchGeneratePage from './pages/BatchGeneratePage'
 
 // Components
 import Header from './components/Header'
@@ -38,6 +39,12 @@ function App() {
              <GeneratePage />
           </div>
         )
+      case 'batch':
+        return (
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+             <BatchGeneratePage />
+          </div>
+        )
       case 'verify':
         return (
           <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12">
@@ -66,7 +73,7 @@ function App() {
                   <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
                     Get Started
                   </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-8">
                       <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                         Generate Proof
@@ -79,6 +86,20 @@ function App() {
                         className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                       >
                         Start Generating
+                      </button>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-8">
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                        Batch Generation
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400 mb-6">
+                        Process multiple files at once. Ideal for large datasets.
+                      </p>
+                      <button
+                        onClick={() => setCurrentPage('batch')}
+                        className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                      >
+                        Start Batch
                       </button>
                     </div>
                     <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-8">

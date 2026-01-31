@@ -115,6 +115,8 @@ mod guest_types {
         Pattern { content: Vec<u8> },
         /// Prove content matching a regular expression exists
         Regex { pattern: String },
+        /// Prove content matching an XPath expression exists (for XML/HTML)
+        XPath { selector: String },
         /// Prove multiple content selections
         Multiple(Vec<ContentSelection>),
     }

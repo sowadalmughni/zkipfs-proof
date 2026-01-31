@@ -311,6 +311,7 @@ impl ContentSelection {
             ContentSelection::ByteRange { start, end } => Some(end - start),
             ContentSelection::Pattern { content } => Some(content.len()),
             ContentSelection::Regex { .. } => None,
+            ContentSelection::XPath { .. } => None,
             ContentSelection::Multiple(selections) => {
                 selections.iter()
                     .map(|s| s.estimated_size())
@@ -325,6 +326,7 @@ impl ContentSelection {
             ContentSelection::ByteRange { start, end } => start < end,
             ContentSelection::Pattern { content } => !content.is_empty(),
             ContentSelection::Regex { pattern } => !pattern.is_empty(),
+            ContentSelection::XPath { selector } => !selector.is_empty(),
             ContentSelection::Multiple(selections) => {
                 !selections.is_empty() && selections.iter().all(|s| s.is_valid())
             }
@@ -345,6 +347,9 @@ impl ContentSelection {
             }
             ContentSelection::Regex { pattern } => {
                 format!("Regex: {}", pattern)
+            }
+            ContentSelection::XPath { selector } => {
+                format!("XPath: {}", selector)
             }
             ContentSelection::Multiple(selections) => {
                 format!("Multiple selections ({})", selections.len())
