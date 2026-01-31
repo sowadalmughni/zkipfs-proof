@@ -310,6 +310,7 @@ impl ContentSelection {
         match self {
             ContentSelection::ByteRange { start, end } => Some(end - start),
             ContentSelection::Pattern { content } => Some(content.len()),
+            ContentSelection::Regex { .. } => None,
             ContentSelection::Multiple(selections) => {
                 selections.iter()
                     .map(|s| s.estimated_size())
@@ -323,6 +324,7 @@ impl ContentSelection {
         match self {
             ContentSelection::ByteRange { start, end } => start < end,
             ContentSelection::Pattern { content } => !content.is_empty(),
+            ContentSelection::Regex { pattern } => !pattern.is_empty(),
             ContentSelection::Multiple(selections) => {
                 !selections.is_empty() && selections.iter().all(|s| s.is_valid())
             }
@@ -340,6 +342,9 @@ impl ContentSelection {
                     String::from_utf8_lossy(&content[..content.len().min(50)]),
                     content.len()
                 )
+            }
+            ContentSelection::Regex { pattern } => {
+                format!("Regex: {}", pattern)
             }
             ContentSelection::Multiple(selections) => {
                 format!("Multiple selections ({})", selections.len())
@@ -367,6 +372,10 @@ mod tests {
 
         let empty_pattern = ContentSelection::Pattern { content: vec![] };
         assert!(!empty_pattern.is_valid());
+
+        let regex = ContentSelection::Regex { pattern: "^test".to_string() };
+        assert!(regex.is_valid());
+        assert_eq!(regex.estimated_size(), None);
     }
 
     #[test]

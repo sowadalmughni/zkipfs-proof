@@ -1,0 +1,4 @@
+This is a test file for verification.
+It contains some text and a pattern to find.
+test pattern is here.
+email: test@example.com

@@ -18,6 +18,7 @@ use tokio::time::timeout;
 use tracing::{debug, info, warn, instrument};
 use uuid::Uuid;
 use chrono::Utc;
+use regex::Regex;
 
 /// Main proof generator for zkIPFS-Proof
 pub struct ProofGenerator {
@@ -286,6 +287,9 @@ impl ProofGenerator {
             ContentSelection::Pattern { content } => {
                 self.extract_pattern(blocks, content)
             }
+            ContentSelection::Regex { pattern } => {
+                self.extract_regex(blocks, pattern)
+            }
             ContentSelection::Multiple(selections) => {
                 let mut combined = Vec::new();
                 for selection in selections {
@@ -294,6 +298,43 @@ impl ProofGenerator {
                 }
                 Ok(combined)
             }
+        }
+    }
+
+    /// Extracts content matching a regex pattern
+    fn extract_regex(
+        &self,
+        blocks: &[IpfsBlock],
+        pattern: &str,
+    ) -> Result<Vec<u8>> {
+        // Concatenate all block data for pattern searching
+        // Note: For very large files, this approach is memory intensive.
+        // A streaming regex implementation would be better for optimization.
+        let mut all_data = Vec::new();
+        for block in blocks {
+            all_data.extend_from_slice(&block.data);
+        }
+        
+        // Attempt to convert to string (lossy if not UTF-8, but regex usually assumes string)
+        let data_str = match std::str::from_utf8(&all_data) {
+            Ok(s) => s,
+            Err(_) => {
+                return Err(ProofError::content_selection_error(
+                    "File content is not valid UTF-8, cannot apply Regex"
+                ));
+            }
+        };
+
+        let re = Regex::new(pattern).map_err(|e| {
+            ProofError::content_selection_error(format!("Invalid regex pattern: {}", e))
+        })?;
+
+        if let Some(mat) = re.find(data_str) {
+            Ok(mat.as_str().as_bytes().to_vec())
+        } else {
+            Err(ProofError::content_selection_error(
+                "Regex pattern not found in file content"
+            ))
         }
     }
 

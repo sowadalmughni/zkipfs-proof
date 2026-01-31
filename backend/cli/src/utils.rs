@@ -27,6 +27,10 @@ fn parse_single_content_selection(input: &str) -> Result<ContentSelection> {
         Ok(ContentSelection::Pattern {
             content: pattern_content.as_bytes().to_vec(),
         })
+    } else if let Some(regex_pattern) = input.strip_prefix("regex:") {
+        Ok(ContentSelection::Regex {
+            pattern: regex_pattern.to_string(),
+        })
     } else if let Some(range_spec) = input.strip_prefix("range:") {
         let parts: Vec<&str> = range_spec.split(':').collect();
         if parts.len() != 2 {
@@ -311,6 +315,15 @@ mod tests {
                 assert_eq!(content, b"hello world");
             }
             _ => panic!("Expected pattern selection"),
+        }
+
+        // Test regex
+        let selection = parse_content_selection("regex:^hello").unwrap();
+        match selection {
+            ContentSelection::Regex { pattern } => {
+                assert_eq!(pattern, "^hello");
+            }
+            _ => panic!("Expected regex selection"),
         }
 
         // Test range

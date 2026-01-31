@@ -6,74 +6,189 @@
 #![no_main]
 
 use risc0_zkvm::guest::env;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use regex::Regex;
 
 risc0_zkvm::guest::entry!(main);
 
-/// Input structure for the ZK proof
-#[derive(serde::Deserialize)]
-struct ProofInput {
-    /// The content pattern to search for
-    content_pattern: String,
-    /// File chunks to search within
-    file_chunks: Vec<Vec<u8>>,
-    /// Expected content hash
-    expected_hash: [u8; 32],
+// ==========================================
+// Shared Types (Must match Host Definition)
+// ==========================================
+
+/// Input data structure for the ZK circuit
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ProofInput {
+    /// IPFS blocks that form the complete file structure
+    pub blocks: Vec<IpfsBlock>,
+    /// Specification of which content to prove exists
+    pub content_selection: ContentSelection,
+    /// Expected content hash for verification
+    pub expected_content_hash: [u8; 32],
 }
 
-/// Output structure for the ZK proof
-#[derive(serde::Serialize)]
-struct ProofOutput {
-    /// Whether the content was found
-    content_found: bool,
-    /// Hash of the found content (if any)
-    content_hash: [u8; 32],
-    /// Position where content was found (if any)
-    position: Option<usize>,
+/// Represents an IPFS block with its data and metadata
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct IpfsBlock {
+    /// Raw block data
+    pub data: Vec<u8>,
+    /// Block's content identifier (CID)
+    pub cid: Vec<u8>,
+    /// Links to other blocks (for DAG structure)
+    pub links: Vec<BlockLink>,
 }
+
+/// Link to another IPFS block
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct BlockLink {
+    /// Name/path of the linked content
+    pub name: String,
+    /// CID of the linked block
+    pub cid: Vec<u8>,
+    /// Size of the linked content
+    pub size: u64,
+}
+
+/// Specification of content to prove within the file
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum ContentSelection {
+    /// Prove content exists within a specific byte range
+    ByteRange { start: usize, end: usize },
+    /// Prove specific content pattern exists
+    Pattern { content: Vec<u8> },
+    /// Prove content matching a regular expression exists
+    Regex { pattern: String },
+    /// Prove multiple content selections
+    Multiple(Vec<ContentSelection>),
+}
+
+/// Output data structure from the ZK circuit
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ProofOutput {
+    /// Root hash of the IPFS DAG structure
+    pub root_hash: [u8; 32],
+    /// Hash of the proven content
+    pub content_hash: [u8; 32],
+    /// Merkle proof demonstrating content inclusion
+    pub inclusion_proof: Vec<[u8; 32]>,
+    /// Metadata about the proof
+    pub metadata: ProofMetadata,
+}
+
+/// Metadata about the generated proof
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ProofMetadata {
+    /// Total number of blocks processed
+    pub block_count: u32,
+    /// Total size of content proven
+    pub content_size: u64,
+    /// Timestamp of proof generation (block number)
+    pub timestamp: u64,
+}
+
+// ==========================================
+// Main Logic
+// ==========================================
 
 fn main() {
     // Read input from the host
     let input: ProofInput = env::read();
     
-    // Search for the content pattern in the file chunks
-    let mut content_found = false;
-    let mut position = None;
-    let mut content_hash = [0u8; 32];
+    // Process input to extract data
+    let all_data = concatenate_blocks(&input.blocks);
     
-    for (chunk_idx, chunk) in input.file_chunks.iter().enumerate() {
-        if let Ok(chunk_str) = std::str::from_utf8(chunk) {
-            if let Some(pos) = chunk_str.find(&input.content_pattern) {
-                content_found = true;
-                position = Some(chunk_idx * 1024 + pos); // Assuming 1KB chunks
-                
-                // Calculate hash of the found content
-                content_hash = sha256_hash(input.content_pattern.as_bytes());
-                break;
-            }
-        }
+    // Extract content based on selection
+    let extracted_content = extract_content(&all_data, &input.content_selection);
+    
+    // Calculate content hash
+    let content_hash: [u8; 32] = sha256_hash(&extracted_content);
+    
+    // Verify hash matches expected
+    if content_hash != input.expected_content_hash {
+        panic!("Content hash mismatch! Expected {:?}, got {:?}", input.expected_content_hash, content_hash);
     }
     
-    // Verify the content hash matches expected
-    if content_found && content_hash != input.expected_hash {
-        content_found = false;
-        position = None;
-    }
+    // Determine root hash (simplified for now, using first block's CID or mock)
+    // In a real IPFS verification, we'd verify the DAG/Merkle root.
+    // Here we use a placeholder or derive it from blocks.
+    let root_hash = [0u8; 32]; // TODO: Implement proper DAG root verification
     
+    // Create output
     let output = ProofOutput {
-        content_found,
+        root_hash,
         content_hash,
-        position,
+        inclusion_proof: vec![], // TODO: Generate inclusion proof
+        metadata: ProofMetadata {
+            block_count: input.blocks.len() as u32,
+            content_size: extracted_content.len() as u64,
+            timestamp: 0, 
+        },
     };
     
     // Commit the result
     env::commit(&output);
 }
 
-/// Simple SHA-256 implementation for the guest program
+fn concatenate_blocks(blocks: &[IpfsBlock]) -> Vec<u8> {
+    let mut data = Vec::new();
+    for block in blocks {
+        data.extend_from_slice(&block.data);
+    }
+    data
+}
+
+fn extract_content(data: &[u8], selection: &ContentSelection) -> Vec<u8> {
+    match selection {
+        ContentSelection::ByteRange { start, end } => {
+            if *start >= data.len() || *end > data.len() || start >= end {
+                panic!("Invalid byte range: {}..{} (len: {})", start, end, data.len());
+            }
+            data[*start..*end].to_vec()
+        }
+        ContentSelection::Pattern { content } => {
+            if let Some(_pos) = find_pattern(data, content) {
+                content.clone()
+            } else {
+                panic!("Pattern not found");
+            }
+        }
+        ContentSelection::Regex { pattern } => {
+             // Convert bytes to string for regex matching (assuming UTF-8)
+             // Note: This panics if file content is not valid UTF-8
+             let data_str = std::str::from_utf8(data).expect("File content is not valid UTF-8");
+             let re = Regex::new(pattern).expect("Invalid regex");
+             
+             if let Some(mat) = re.find(data_str) {
+                 mat.as_str().as_bytes().to_vec()
+             } else {
+                 panic!("Regex pattern not found");
+             }
+        }
+        ContentSelection::Multiple(selections) => {
+            let mut result = Vec::new();
+            for sel in selections {
+                result.extend(extract_content(data, sel));
+            }
+            result
+        }
+    }
+}
+
+fn find_pattern(data: &[u8], pattern: &[u8]) -> Option<usize> {
+    if pattern.is_empty() || pattern.len() > data.len() {
+        return None;
+    }
+
+    for i in 0..=(data.len() - pattern.len()) {
+        if &data[i..i + pattern.len()] == pattern {
+            return Some(i);
+        }
+    }
+    None
+}
+
 fn sha256_hash(data: &[u8]) -> [u8; 32] {
-    use sha2::{Digest, Sha256};
     let mut hasher = Sha256::new();
     hasher.update(data);
     hasher.finalize().into()
 }
-

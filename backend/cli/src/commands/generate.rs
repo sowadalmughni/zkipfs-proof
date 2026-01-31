@@ -33,7 +33,8 @@ pub struct GenerateCommand {
     /// 
     /// Formats:
     /// - Pattern: "pattern:secret text"
-    /// - Byte range: "range:100:200" 
+    /// - Regex: "regex:^\d{3}-\d{2}-\d{4}$"
+    /// - Byte range: "range:100:200"  
     /// - Multiple: "pattern:text1,range:50:100"
     #[arg(short, long, value_name = "SELECTION")]
     pub content: String,

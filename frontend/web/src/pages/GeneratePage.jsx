@@ -36,6 +36,7 @@ export default function GeneratePage() {
     securityLevel: '128',
     proofSystem: 'risc0',
     contentSelection: 'full',
+    selectionValue: '',
     includeMetadata: true,
     enableSharing: true
   })
@@ -479,11 +480,35 @@ export default function GeneratePage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="full">Full File</SelectItem>
-                      <SelectItem value="range">Byte Range</SelectItem>
+                      <SelectItem value="range">Byte Range (e.g. 100-200)</SelectItem>
                       <SelectItem value="pattern">Pattern Match</SelectItem>
+                      <SelectItem value="regex">Regular Expression</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
+                {proofSettings.contentSelection !== 'full' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="selection-value">
+                      {proofSettings.contentSelection === 'range' ? 'Byte Range (start-end)' : 
+                       proofSettings.contentSelection === 'regex' ? 'Regex Pattern' : 'Search Pattern'}
+                    </Label>
+                    <div className="relative">
+                      <input
+                        id="selection-value"
+                        type="text"
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        placeholder={
+                          proofSettings.contentSelection === 'range' ? '1024-2048' :
+                          proofSettings.contentSelection === 'regex' ? '^([a-z0-9_\\.-]+)@([\\da-z\\.-]+)\\.([a-z\\.]{2,6})$' :
+                          'Secret content to find...'
+                        }
+                        value={proofSettings.selectionValue}
+                        onChange={(e) => setProofSettings(prev => ({ ...prev, selectionValue: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between">
                   <Label htmlFor="include-metadata">Include Metadata</Label>

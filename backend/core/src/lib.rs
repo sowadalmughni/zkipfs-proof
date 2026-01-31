@@ -113,6 +113,8 @@ mod guest_types {
         ByteRange { start: usize, end: usize },
         /// Prove specific content pattern exists
         Pattern { content: Vec<u8> },
+        /// Prove content matching a regular expression exists
+        Regex { pattern: String },
         /// Prove multiple content selections
         Multiple(Vec<ContentSelection>),
     }
