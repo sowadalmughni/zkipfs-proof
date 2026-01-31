@@ -49,7 +49,7 @@ export default function BatchProofGeneration() {
     const pendingFiles = files.filter(f => f.status === 'pending')
     let processedCount = 0
 
-    // Process files sequentially for now (could be parallelized)
+    // Process files sequentially (to avoid overwhelming the local server)
     for (const fileItem of pendingFiles) {
       // Update status to processing
       setFiles(prev => prev.map(f => 
@@ -57,25 +57,56 @@ export default function BatchProofGeneration() {
       ))
 
       try {
-        // Simulate processing steps
-        const steps = 10
-        for (let i = 1; i <= steps; i++) {
-          await new Promise(resolve => setTimeout(resolve, 300)) // Simulate work
-          
-          setFiles(prev => prev.map(f => 
-            f.id === fileItem.id ? { ...f, progress: (i / steps) * 100 } : f
-          ))
+        // 1. Submit Job
+        const formData = new FormData();
+        formData.append('file', fileItem.file);
+        // Defaulting to simple pattern match or full file for batch for now. 
+        // Ideally, we'd allow per-file configuration in the UI.
+        formData.append('content_selection', 'pattern:Hello'); // TODO: Add UI for this
+        formData.append('security_level', '128');
+
+        // Check availability of backend
+        try {
+            await fetch('http://localhost:3000/health');
+        } catch {
+            throw new Error("Backend server is not running on http://localhost:3000");
         }
 
-        // Mark as completed with mock result
-        const mockResult = {
-          proofId: `proof_${fileItem.id}`,
-          hash: '0x' + Array.from({length: 16}, () => Math.floor(Math.random()*16).toString(16)).join(''),
-          timestamp: new Date().toISOString()
+        const submitRes = await fetch('http://localhost:3000/generate', {
+            method: 'POST',
+            body: formData,
+        });
+        
+        if (!submitRes.ok) throw new Error('Failed to submit job');
+        const { job_id } = await submitRes.json();
+
+        // 2. Poll Status
+        let jobStatus = 'Pending';
+        let result = null;
+        
+        while (jobStatus === 'Pending' || jobStatus === 'Processing') {
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Poll every 1s
+            
+            const statusRes = await fetch(`http://localhost:3000/status/${job_id}`);
+            if (!statusRes.ok) throw new Error('Failed to check status');
+            
+            const statusData = await statusRes.json();
+            jobStatus = statusData.status; // "Pending", "Processing", "Completed", "Failed"
+
+            // Simulate progress update if backend doesn't provide fine-grained progress
+            setFiles(prev => prev.map(f => 
+                f.id === fileItem.id ? { ...f, progress: Math.min(f.progress + 10, 90) } : f
+            ));
+
+            if (jobStatus === 'Completed') {
+                result = statusData.result;
+            } else if (jobStatus === 'Failed') {
+                throw new Error(statusData.result || 'Job failed');
+            }
         }
 
         setFiles(prev => prev.map(f => 
-          f.id === fileItem.id ? { ...f, status: 'completed', progress: 100, result: mockResult } : f
+          f.id === fileItem.id ? { ...f, status: 'completed', progress: 100, result } : f
         ))
 
       } catch (error) {

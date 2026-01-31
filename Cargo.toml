@@ -3,6 +3,7 @@ members = [
     "backend/core",
     "backend/cli",
     "backend/core/methods",
+    "backend/server",
 ]
 resolver = "2"
 
