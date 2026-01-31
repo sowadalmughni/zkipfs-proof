@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import { useDropzone } from 'react-dropzone'
 import { 
   Upload, 
@@ -59,10 +59,33 @@ export default function GeneratePage() {
     }
   })
 
+  // Validate Regex pattern
+  const isValidRegex = (pattern) => {
+    if (!pattern) return false
+    try {
+      new RegExp(pattern)
+      return true
+    } catch {
+      return false
+    }
+  }
+
   const generateProof = async () => {
     if (!uploadedFile) {
       toast.error('Please upload a file first')
       return
+    }
+
+    // Validate Regex if selected
+    if (proofSettings.contentSelection === 'regex') {
+      if (!proofSettings.selectionValue) {
+        toast.error('Please enter a regex pattern')
+        return
+      }
+      if (!isValidRegex(proofSettings.selectionValue)) {
+        toast.error('Invalid regex pattern')
+        return
+      }
     }
 
     setIsGenerating(true)
@@ -97,6 +120,9 @@ export default function GeneratePage() {
         proofData: '0x' + Array.from({length: 256}, () => Math.floor(Math.random() * 16).toString(16)).join(''),
         securityLevel: parseInt(proofSettings.securityLevel),
         proofSystem: proofSettings.proofSystem,
+        // Add content selection metadata
+        contentSelection: proofSettings.contentSelection,
+        selectionValue: proofSettings.selectionValue,
         generationTime: Math.floor(Math.random() * 30) + 10, // 10-40 seconds
         zkCycles: Math.floor(Math.random() * 1000000) + 500000,
         shareableUrl: `https://zkipfs-proof.com/verify/${Math.random().toString(36).substr(2, 9)}`
@@ -506,6 +532,11 @@ export default function GeneratePage() {
                         value={proofSettings.selectionValue}
                         onChange={(e) => setProofSettings(prev => ({ ...prev, selectionValue: e.target.value }))}
                       />
+                      {proofSettings.contentSelection === 'regex' && proofSettings.selectionValue && !isValidRegex(proofSettings.selectionValue) && (
+                        <p className="absolute -bottom-5 left-0 text-xs text-red-500">
+                          Invalid regular expression
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -539,25 +570,25 @@ export default function GeneratePage() {
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div className="flex items-start space-x-2">
-                  <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center shrink-0 mt-0.5">
                     <span className="text-xs font-medium text-primary">1</span>
                   </div>
                   <p>Your file is processed locally - it never leaves your device</p>
                 </div>
                 <div className="flex items-start space-x-2">
-                  <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center shrink-0 mt-0.5">
                     <span className="text-xs font-medium text-primary">2</span>
                   </div>
                   <p>A cryptographic hash is computed using IPFS content addressing</p>
                 </div>
                 <div className="flex items-start space-x-2">
-                  <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center shrink-0 mt-0.5">
                     <span className="text-xs font-medium text-primary">3</span>
                   </div>
                   <p>Zero-knowledge proof is generated using Risc0 ZK-VM</p>
                 </div>
                 <div className="flex items-start space-x-2">
-                  <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center shrink-0 mt-0.5">
                     <span className="text-xs font-medium text-primary">4</span>
                   </div>
                   <p>Proof can be verified by anyone without revealing file content</p>

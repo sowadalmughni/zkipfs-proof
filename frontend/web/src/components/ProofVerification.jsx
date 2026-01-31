@@ -17,7 +17,7 @@ const ProofVerification = () => {
           JSON.parse(content); // Validate JSON
           setProofData(content);
           setError(null);
-        } catch (err) {
+        } catch {
           setError('Invalid JSON file. Please upload a valid proof file.');
         }
       };
@@ -62,7 +62,7 @@ const ProofVerification = () => {
       };
 
       setVerificationResult(result);
-    } catch (err) {
+    } catch {
       setError('Invalid proof format. Please check your proof data.');
     } finally {
       setIsVerifying(false);

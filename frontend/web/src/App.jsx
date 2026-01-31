@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Toaster } from 'react-hot-toast'
 
+import GeneratePage from './pages/GeneratePage'
+
 // Components
 import Header from './components/Header'
 import Hero from './components/Hero'
-import FileUpload from './components/FileUpload'
-import ProofGeneration from './components/ProofGeneration'
 import ProofVerification from './components/ProofVerification'
 import Footer from './components/Footer'
 import LoadingScreen from './components/LoadingScreen'
@@ -34,23 +34,8 @@ function App() {
     switch (currentPage) {
       case 'generate':
         return (
-          <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12">
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="text-center mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-                  Generate Proof
-                </h1>
-                <p className="text-lg text-gray-600 dark:text-gray-400">
-                  Create a zero-knowledge proof for your file content
-                </p>
-              </div>
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
-                <div className="space-y-8">
-                  <FileUpload onFileSelect={(file) => console.log('File selected:', file)} />
-                  <ProofGeneration />
-                </div>
-              </div>
-            </div>
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+             <GeneratePage />
           </div>
         )
       case 'verify':
